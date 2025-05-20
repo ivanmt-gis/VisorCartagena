@@ -69,11 +69,11 @@
     .custom-button:hover {
       background: #f0f0f0;
     }
-    /* Contenedor para botones arriba a la izquierda */
+    /* Contenedor para botones personalizados debajo capas base */
     .custom-controls {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 80px;  /* debajo del control capas base que está ~10px top + ~70px altura capas */
+      right: 10px;
       z-index: 1100;
       display: flex;
       flex-direction: column;
@@ -104,9 +104,8 @@
 <body>
   <div id="map"></div>
 
-  <div class="custom-controls" id="customControls">
-    <!-- Botones se añadirán por JS -->
-  </div>
+  <!-- Aquí ponemos los botones personalizados -->
+  <div class="custom-controls" id="customControls"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
@@ -255,42 +254,63 @@
     // Botón modo oscuro
     const darkModeBtn = document.createElement('button');
     darkModeBtn.className = 'custom-button';
-    darkModeBtn.title = 'Modo oscuro';
-    darkModeBtn.innerHTML = '🌙';
+    darkModeBtn.title = 'Modo oscuro/claro';
+    darkModeBtn.innerHTML = '🌓';
 
-    // Botón ubicación
-    const locateBtn = document.createElement('button');
-    locateBtn.className = 'custom-button';
-    locateBtn.title = 'Ir a mi ubicación';
-    locateBtn.innerHTML = '📍';
+    // Botón ubicación con seguimiento en vivo
+    let locationMarker = null;
+    let locating = false;
 
-    controlsDiv.appendChild(darkModeBtn);
-    controlsDiv.appendChild(locateBtn);
-
-    // Estado modo oscuro y capa actual
-    let isDark = false;
+    const geoBtn = document.createElement('button');
+    geoBtn.className = 'custom-button';
+    geoBtn.title = 'Mostrar/Ocultar mi ubicación';
+    geoBtn.innerHTML = '📍';
 
     darkModeBtn.onclick = () => {
-      isDark = !isDark;
       document.body.classList.toggle('dark-mode');
 
-      if (isDark) {
+      if (map.hasLayer(currentBaseLayer)) {
         map.removeLayer(currentBaseLayer);
-        baseLayers["Mapa oscuro"].addTo(map);
+      }
+      if (document.body.classList.contains('dark-mode')) {
         currentBaseLayer = baseLayers["Mapa oscuro"];
       } else {
-        map.removeLayer(currentBaseLayer);
-        baseLayers["OpenStreetMap"].addTo(map);
         currentBaseLayer = baseLayers["OpenStreetMap"];
+      }
+      currentBaseLayer.addTo(map);
+    };
+
+    geoBtn.onclick = () => {
+      if (!locating) {
+        locating = true;
+        geoBtn.style.background = '#cce5ff'; // indicar activo
+        map.locate({ setView: true, maxZoom: 16, watch: true, enableHighAccuracy: true });
+      } else {
+        locating = false;
+        geoBtn.style.background = 'white';
+        if (locationMarker) {
+          map.removeLayer(locationMarker);
+          locationMarker = null;
+        }
+        map.stopLocate();
       }
     };
 
-    locateBtn.onclick = () => {
-      map.locate({ setView: true, maxZoom: 15 });
-    };
+    controlsDiv.appendChild(darkModeBtn);
+    controlsDiv.appendChild(geoBtn);
 
-    map.on('locationerror', (e) => {
-      alert('No se pudo obtener la ubicación.');
+    // Actualizar posición en vivo
+    map.on('locationfound', function(e) {
+      if (locationMarker) map.removeLayer(locationMarker);
+
+      locationMarker = L.marker(e.latlng).addTo(map)
+        .bindPopup("Estás aquí").openPopup();
+    });
+
+    map.on('locationerror', function(e) {
+      alert("Error al obtener la ubicación: " + e.message);
+      locating = false;
+      geoBtn.style.background = 'white';
     });
   </script>
 </body>
