@@ -35,12 +35,31 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([0, 0], 2);
+    // Definir mapas base
+    const baseLayers = {
+      "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }),
+      "CartoDB Positron": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://carto.com/">CartoDB</a>'
+      }),
+      "Esri World Imagery": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      })
+    };
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    // Inicializar mapa con OpenStreetMap por defecto
+    const map = L.map('map', {
+      layers: [baseLayers["OpenStreetMap"]],
+      center: [0, 0],
+      zoom: 2
+    });
+
+    // Control para cambiar mapas base
+    L.control.layers(baseLayers).addTo(map);
 
     function getColorByCategoria(categoria) {
       switch (categoria) {
@@ -56,7 +75,7 @@
       }
     }
 
-    // Primero cargar el límite del municipio (sin interacción)
+    // Cargar límite municipio (sin interacción)
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
@@ -66,17 +85,16 @@
             weight: 4,
             fillOpacity: 0
           },
-          interactive: false  // no responder a clics
+          interactive: false
         }).addTo(map);
 
-        // Centrar el mapa en el municipio
         map.fitBounds(municipioLayer.getBounds());
 
-        // Ahora cargar la capa de puntos (por encima)
+        // Cargar puntos por encima
         fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
           .then(response => response.json())
           .then(data => {
-            const geojsonLayer = L.geoJSON(data, {
+            L.geoJSON(data, {
               pointToLayer: function(feature, latlng) {
                 const cat = Number(feature.properties.Categoria);
                 return L.circleMarker(latlng, {
@@ -90,8 +108,8 @@
               },
               onEachFeature: function(feature, layer) {
                 const nombre = feature.properties.Name || "Sin nombre";
-                const categoria = feature.properties.Categoria || "Sin categoría";
-                layer.bindPopup(`<strong>Nombre:</strong> ${nombre}<br><strong>Categoría:</strong> ${categoria}`);
+                // Popup solo con el nombre
+                layer.bindPopup(`<strong>Nombre:</strong> ${nombre}`);
               }
             }).addTo(map);
           })
@@ -99,6 +117,7 @@
       })
       .catch(error => console.error('Error cargando Cartagena.json:', error));
 
+    // Leyenda
     const legend = L.control({position: 'bottomright'});
 
     legend.onAdd = function(map) {
@@ -113,12 +132,11 @@
         { id: 7, name: "Museo" },
         { id: 8, name: "Centro comercial" }
       ];
-      
+
       div.innerHTML += '<h4>Categorías</h4>';
-      
+
       categories.forEach(cat => {
-        div.innerHTML += 
-          `<i style="background:${getColorByCategoria(cat.id)}"></i> ${cat.name}<br>`;
+        div.innerHTML += `<i style="background:${getColorByCategoria(cat.id)}"></i> ${cat.name}<br>`;
       });
 
       return div;
