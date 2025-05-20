@@ -29,14 +29,28 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Cargar GeoJSON desde GitHub (ajusta esta URL a la tuya)
+    // Cargar GeoJSON de puntos
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
       .then(response => response.json())
       .then(data => {
         const geojsonLayer = L.geoJSON(data).addTo(map);
         map.fitBounds(geojsonLayer.getBounds());
       })
-      .catch(error => console.error('Error cargando el GeoJSON:', error));
+      .catch(error => console.error('Error cargando Puntos.json:', error));
+
+    // Cargar límite del municipio de Cartagena
+    fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
+      .then(response => response.json())
+      .then(data => {
+        const municipioLayer = L.geoJSON(data, {
+          style: {
+            color: "red",
+            weight: 4,
+            fillOpacity: 0
+          }
+        }).addTo(map);
+      })
+      .catch(error => console.error('Error cargando Cartagena.json:', error));
   </script>
 </body>
 </html>
