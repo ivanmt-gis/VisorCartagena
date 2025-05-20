@@ -82,5 +82,34 @@
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
-        const municipioLayer = L.geoJSON(data,
+        const municipioLayer = L.geoJSON(data, {
+          style: {
+            color: "red",
+            weight: 4,
+            fillOpacity: 0
+          }
+        }).addTo(map);
+        map.fitBounds(municipioLayer.getBounds());
+      });
+
+    const legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function(map) {
+      const div = L.DomUtil.create('div', 'legend');
+      const categories = [1,2,3,4,5,6,7,8];
+      
+      div.innerHTML += '<h4>Categorías</h4>';
+      
+      categories.forEach(cat => {
+        div.innerHTML += 
+          `<i style="background:${getColorByCategoria(cat)}"></i> ${cat}<br>`;
+      });
+
+      return div;
+    };
+
+    legend.addTo(map);
+  </script>
+</body>
+</html>
 
