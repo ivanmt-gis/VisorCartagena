@@ -5,59 +5,82 @@
   <title>Visor de Puntos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    #map {
-      height: 100vh;
-      width: 100%;
+    #map { height: 100vh; width: 100%; }
+    .legend {
+      background: white;
+      padding: 6px 8px;
+      font: 14px Arial, Helvetica, sans-serif;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+      line-height: 24px;
+      color: #333;
+    }
+    .legend h4 {
+      margin: 0 0 5px 0;
+      color: #777;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Crear el mapa
     const map = L.map('map').setView([0, 0], 2);
 
-    // Capa base
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Cargar GeoJSON de puntos con popup que muestra solo "Nombre"
+    function getColorByCategoria(categoria) {
+      switch (categoria) {
+        case 1: return "#1f77b4";
+        case 2: return "#ff7f0e";
+        case 3: return "#2ca02c";
+        case 4: return "#d62728";
+        case 5: return "#9467bd";
+        case 6: return "#8c564b";
+        case 7: return "#e377c2";
+        case 8: return "#7f7f7f";
+        default: return "#000000";
+      }
+    }
+
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
       .then(response => response.json())
       .then(data => {
         const geojsonLayer = L.geoJSON(data, {
-          onEachFeature: function (feature, layer) {
+          pointToLayer: function(feature, latlng) {
+            const cat = Number(feature.properties.Categoria);
+            return L.circleMarker(latlng, {
+              radius: 6,
+              fillColor: getColorByCategoria(cat),
+              color: "#000",
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          },
+          onEachFeature: function(feature, layer) {
             const nombre = feature.properties.Name || "Sin nombre";
-            layer.bindPopup(`<strong>Nombre:</strong> ${nombre}`);
+            layer.bindPopup(`<strong>Nombre:</strong> ${nombre}<br><strong>Categoría:</strong> ${feature.properties.Categoria}`);
           }
         }).addTo(map);
-        //map.fitBounds(geojsonLayer.getBounds());
       })
-      .catch(error => console.error('Error cargando Puntos.json:', error));
+      .catch(e => console.error(e));
 
-    // Cargar límite del municipio de Cartagena
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
-        const municipioLayer = L.geoJSON(data, {
-          style: {
-            color: "red",
-            weight: 4,
-            fillOpacity: 0
-          }
-        }).addTo(map);
-        map.fitBounds(municipioLayer.getBounds());
-      })
-      .catch(error => console.error('Error cargando Cartagena.json:', error));
-  </script>
-</body>
-</html>
+        const municipioLayer = L.geoJSON(data,
 
