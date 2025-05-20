@@ -29,11 +29,19 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Cargar GeoJSON de puntos
+    // Cargar GeoJSON de puntos con popup
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
       .then(response => response.json())
       .then(data => {
-        const geojsonLayer = L.geoJSON(data).addTo(map);
+        const geojsonLayer = L.geoJSON(data, {
+          onEachFeature: function (feature, layer) {
+            let popupContent = "";
+            for (const key in feature.properties) {
+              popupContent += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+            }
+            layer.bindPopup(popupContent);
+          }
+        }).addTo(map);
         //map.fitBounds(geojsonLayer.getBounds());
       })
       .catch(error => console.error('Error cargando Puntos.json:', error));
@@ -49,8 +57,8 @@
             fillOpacity: 0
           }
         }).addTo(map);
-            // Centrar el mapa en el municipio
-    map.fitBounds(municipioLayer.getBounds());
+        // Centrar el mapa en el municipio
+        map.fitBounds(municipioLayer.getBounds());
       })
       .catch(error => console.error('Error cargando Cartagena.json:', error));
   </script>
