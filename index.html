@@ -17,6 +17,38 @@
       height: 100%;
       width: 100%;
     }
+    .legend {
+      position: absolute;
+      bottom: 30px;
+      right: 10px;
+      background: white;
+      padding: 6px 8px;
+      font: 14px Arial, Helvetica, sans-serif;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+      z-index: 1000;
+    }
+    .legend h4 {
+      margin: 0 0 5px 0;
+      color: #777;
+      cursor: pointer;
+    }
+    .legend-content {
+      display: none;
+      margin-top: 5px;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.8;
+    }
+    .legend label {
+      display: block;
+      margin: 2px 0;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -24,7 +56,6 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Mapas base
     const baseLayers = {
       "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -62,10 +93,20 @@
       }
     }
 
-    let allLayersByCat = {}; // Agrupar marcadores por categoría
+    const categoryNames = {
+      1: "Mercado",
+      2: "Hostelería",
+      3: "Quesería",
+      4: "Alimentación/Panadería",
+      5: "Bodega",
+      6: "Otros servicios",
+      7: "Museo",
+      8: "Centro comercial"
+    };
+
+    const markersByCategory = {};
 
     function renderPoints(data) {
-      const layerGroup = {};
       data.features.forEach(feature => {
         const cat = Number(feature.properties.Categoria);
         const marker = L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
@@ -77,36 +118,18 @@
           fillOpacity: 0.8
         }).bindPopup(`<strong>Nombre:</strong> ${feature.properties.Name || "Sin nombre"}`);
 
-        if (!layerGroup[cat]) {
-          layerGroup[cat] = L.layerGroup();
+        if (!markersByCategory[cat]) {
+          markersByCategory[cat] = L.layerGroup();
         }
-        layerGroup[cat].addLayer(marker);
+        markersByCategory[cat].addLayer(marker);
       });
 
-      allLayersByCat = layerGroup;
-
-      // Añadir control de capas por categoría
-      const categoryNames = {
-        1: "Mercado",
-        2: "Hostelería",
-        3: "Quesería",
-        4: "Alimentación/Panadería",
-        5: "Bodega",
-        6: "Otros servicios",
-        7: "Museo",
-        8: "Centro comercial"
-      };
-
-      const categoryLayers = {};
-      for (const cat in layerGroup) {
-        categoryLayers[categoryNames[cat]] = layerGroup[cat];
+      // Mostrar todos inicialmente
+      for (const cat in markersByCategory) {
+        markersByCategory[cat].addTo(map);
       }
-
-      L.control.layers(null, categoryLayers, { collapsed: false }).addTo(map);
-      Object.values(layerGroup).forEach(group => group.addTo(map));
     }
 
-    // Cargar límites y puntos
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
@@ -123,13 +146,48 @@
 
         fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
           .then(response => response.json())
-          .then(data => renderPoints(data))
-          .catch(e => console.error(e));
-      })
-      .catch(error => console.error('Error cargando Cartagena.json:', error));
+          .then(data => renderPoints(data));
+      });
+
+    // Crear la leyenda personalizada desplegable
+    const legendDiv = L.DomUtil.create('div', 'legend');
+    legendDiv.innerHTML = `<h4 id="legendToggle">Filtrar por categoría ▾</h4><div class="legend-content" id="legendContent"></div>`;
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = () => legendDiv;
+    legend.addTo(map);
+
+    const content = legendDiv.querySelector('#legendContent');
+    for (const cat in categoryNames) {
+      const color = getColorByCategoria(Number(cat));
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" data-cat="${cat}" checked> 
+        <i style="background:${color}"></i> ${categoryNames[cat]}`;
+      content.appendChild(label);
+    }
+
+    // Mostrar/ocultar contenido
+    const toggle = document.getElementById("legendToggle");
+    toggle.addEventListener("click", () => {
+      content.style.display = content.style.display === "none" ? "block" : "none";
+      toggle.innerHTML = `Filtrar por categoría ${content.style.display === "none" ? '▸' : '▾'}`;
+    });
+    content.style.display = "none"; // Inicia cerrado
+
+    // Manejar filtrado
+    content.addEventListener('change', (e) => {
+      if (e.target.tagName === "INPUT") {
+        const cat = e.target.getAttribute('data-cat');
+        if (e.target.checked) {
+          markersByCategory[cat]?.addTo(map);
+        } else {
+          markersByCategory[cat]?.removeFrom(map);
+        }
+      }
+    });
   </script>
 </body>
 </html>
+
 
 
 
