@@ -30,7 +30,7 @@
     }).addTo(map);
 
     // Cargar GeoJSON desde GitHub (ajusta esta URL a la tuya)
-    fetch('https://raw.githubusercontent.com/USUARIO/repositorio/rama/ruta/archivo.geojson')
+    fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
       .then(response => response.json())
       .then(data => {
         const geojsonLayer = L.geoJSON(data).addTo(map);
