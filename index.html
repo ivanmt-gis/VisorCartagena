@@ -29,13 +29,9 @@
       z-index: 1000;
       width: 220px;
     }
-    .legend.dark {
-      background: #333;
-      color: white;
-    }
     .legend h4 {
       margin: 0 0 5px 0;
-      color: inherit;
+      color: #777;
       cursor: pointer;
     }
     .legend-content {
@@ -54,21 +50,18 @@
       margin: 2px 0;
       cursor: pointer;
     }
-
-    .leaflet-top.leaflet-left {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      padding: 5px;
-    }
+    /* Botón ubicación */
     .custom-button {
       background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 13px;
+      border: none;
+      padding: 6px 10px;
       cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      font-size: 16px;
+      border-radius: 4px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+    .custom-button:hover {
+      background: #f0f0f0;
     }
   </style>
 </head>
@@ -77,77 +70,28 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const lightBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    });
-    const darkBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      attribution: '&copy; CartoDB'
-    });
-    const grayBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      attribution: '&copy; CartoDB'
-    });
-    const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: 'Tiles &copy; Esri'
-    });
-
-    let currentBase = lightBase;
-
     const baseLayers = {
-      "OpenStreetMap": lightBase,
-      "Mapa gris claro": grayBase,
-      "Imagen satélite": satBase
+      "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }),
+      "Mapa gris claro": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://carto.com/">CartoDB</a>'
+      }),
+      "Imagen satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      })
     };
 
     const map = L.map('map', {
-      layers: [lightBase],
+      layers: [baseLayers["OpenStreetMap"]],
       center: [0, 0],
       zoom: 2
     });
 
     L.control.layers(baseLayers).addTo(map);
-
-    // Botón modo oscuro
-    const darkBtn = L.control({ position: 'topleft' });
-    darkBtn.onAdd = function(map) {
-      const btn = L.DomUtil.create('button', 'custom-button');
-      btn.innerHTML = "🌗 Modo oscuro/claro";
-      btn.onclick = () => {
-        if (map.hasLayer(lightBase)) {
-          map.removeLayer(lightBase);
-          map.addLayer(darkBase);
-          document.querySelector('.legend').classList.add('dark');
-          currentBase = darkBase;
-        } else {
-          map.removeLayer(darkBase);
-          map.addLayer(lightBase);
-          document.querySelector('.legend').classList.remove('dark');
-          currentBase = lightBase;
-        }
-      };
-      return btn;
-    };
-    darkBtn.addTo(map);
-
-    // Botón ubicación
-    const geoBtn = L.control({ position: 'topleft' });
-    geoBtn.onAdd = function(map) {
-      const btn = L.DomUtil.create('button', 'custom-button');
-      btn.innerHTML = "📍 Mi ubicación";
-      btn.onclick = () => {
-        map.locate({ setView: true, maxZoom: 16 });
-      };
-      return btn;
-    };
-    geoBtn.addTo(map);
-
-    map.on('locationfound', function(e) {
-      L.marker(e.latlng).addTo(map)
-        .bindPopup("Estás aquí").openPopup();
-    });
 
     function getColorByCategoria(categoria) {
       switch (categoria) {
@@ -194,27 +138,32 @@
         markersByCategory[cat].addLayer(marker);
       });
 
+      // Mostrar todos inicialmente
       for (const cat in markersByCategory) {
         markersByCategory[cat].addTo(map);
       }
     }
 
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
-      .then(r => r.json())
+      .then(response => response.json())
       .then(data => {
         const municipioLayer = L.geoJSON(data, {
-          style: { color: "red", weight: 4, fillOpacity: 0 },
+          style: {
+            color: "red",
+            weight: 4,
+            fillOpacity: 0
+          },
           interactive: false
         }).addTo(map);
 
         map.fitBounds(municipioLayer.getBounds());
 
         fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
-          .then(r => r.json())
+          .then(response => response.json())
           .then(data => renderPoints(data));
       });
 
-    // Leyenda desplegable
+    // Crear la leyenda personalizada desplegable
     const legendDiv = L.DomUtil.create('div', 'legend');
     legendDiv.innerHTML = `<h4 id="legendToggle">Filtrar por categoría ▾</h4><div class="legend-content" id="legendContent"></div>`;
     const legend = L.control({ position: 'bottomright' });
@@ -230,12 +179,15 @@
       content.appendChild(label);
     }
 
-    document.getElementById("legendToggle").addEventListener("click", () => {
+    // Mostrar/ocultar contenido
+    const toggle = document.getElementById("legendToggle");
+    toggle.addEventListener("click", () => {
       content.style.display = content.style.display === "none" ? "block" : "none";
-      document.getElementById("legendToggle").innerHTML = `Filtrar por categoría ${content.style.display === "none" ? '▸' : '▾'}`;
+      toggle.innerHTML = `Filtrar por categoría ${content.style.display === "none" ? '▸' : '▾'}`;
     });
-    content.style.display = "none";
+    content.style.display = "none"; // Inicia cerrado
 
+    // Manejar filtrado
     content.addEventListener('change', (e) => {
       if (e.target.tagName === "INPUT") {
         const cat = e.target.getAttribute('data-cat');
@@ -246,9 +198,50 @@
         }
       }
     });
+
+    // --- BOTÓN DE UBICACIÓN CON SEGUIMIENTO EN VIVO ---
+    let locationMarker = null;
+    let locating = false;
+
+    const geoBtn = L.control({ position: 'topleft' });
+    geoBtn.onAdd = function(map) {
+      const btn = L.DomUtil.create('button', 'custom-button');
+      btn.innerHTML = "📍 Mi ubicación";
+
+      btn.onclick = () => {
+        if (!locating) {
+          locating = true;
+          btn.innerHTML = "📍 Desactivar ubicación";
+          map.locate({ setView: true, maxZoom: 16, watch: true, enableHighAccuracy: true });
+        } else {
+          locating = false;
+          btn.innerHTML = "📍 Mi ubicación";
+          if (locationMarker) {
+            map.removeLayer(locationMarker);
+            locationMarker = null;
+          }
+          map.stopLocate();
+        }
+      };
+
+      return btn;
+    };
+    geoBtn.addTo(map);
+
+    map.on('locationfound', function(e) {
+      if (locationMarker) map.removeLayer(locationMarker);
+
+      locationMarker = L.marker(e.latlng).addTo(map)
+        .bindPopup("Estás aquí").openPopup();
+    });
+
+    map.on('locationerror', function(e) {
+      alert("Error al obtener la ubicación: " + e.message);
+    });
   </script>
 </body>
 </html>
+
 
 
 
