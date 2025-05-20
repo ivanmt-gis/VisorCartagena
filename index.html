@@ -21,12 +21,16 @@
       margin: 0 0 5px 0;
       color: #777;
     }
-    .legend i {
-      width: 18px;
-      height: 18px;
-      float: left;
-      margin-right: 8px;
-      opacity: 0.8;
+    .legend button {
+      display: block;
+      width: 100%;
+      margin: 2px 0;
+      padding: 4px;
+      font-size: 13px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      text-align: left;
     }
   </style>
 </head>
@@ -35,7 +39,6 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Definir mapas base
     const baseLayers = {
       "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -45,20 +48,18 @@
         maxZoom: 19,
         attribution: '&copy; <a href="https://carto.com/">CartoDB</a>'
       }),
-      "Imagen satelite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      "Imagen satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
         attribution: 'Tiles &copy; Esri'
       })
     };
 
-    // Inicializar mapa con OpenStreetMap por defecto
     const map = L.map('map', {
       layers: [baseLayers["OpenStreetMap"]],
       center: [0, 0],
       zoom: 2
     });
 
-    // Control para cambiar mapas base
     L.control.layers(baseLayers).addTo(map);
 
     function getColorByCategoria(categoria) {
@@ -75,7 +76,29 @@
       }
     }
 
-    // Cargar límite municipio (sin interacción)
+    let allMarkers = [];
+
+    function renderPoints(data, categoriaFiltrada = null) {
+      allMarkers.forEach(m => map.removeLayer(m));
+      allMarkers = [];
+
+      data.features.forEach(feature => {
+        const cat = Number(feature.properties.Categoria);
+        if (!categoriaFiltrada || cat === categoriaFiltrada) {
+          const marker = L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
+            radius: 6,
+            fillColor: getColorByCategoria(cat),
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+          }).bindPopup(`<strong>Nombre:</strong> ${feature.properties.Name || "Sin nombre"}`);
+          marker.addTo(map);
+          allMarkers.push(marker);
+        }
+      });
+    }
+
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
@@ -90,34 +113,16 @@
 
         map.fitBounds(municipioLayer.getBounds());
 
-        // Cargar puntos por encima
         fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
           .then(response => response.json())
           .then(data => {
-            L.geoJSON(data, {
-              pointToLayer: function(feature, latlng) {
-                const cat = Number(feature.properties.Categoria);
-                return L.circleMarker(latlng, {
-                  radius: 6,
-                  fillColor: getColorByCategoria(cat),
-                  color: "#000",
-                  weight: 1,
-                  opacity: 1,
-                  fillOpacity: 0.8
-                });
-              },
-              onEachFeature: function(feature, layer) {
-                const nombre = feature.properties.Name || "Sin nombre";
-                // Popup solo con el nombre
-                layer.bindPopup(`<strong>Nombre:</strong> ${nombre}`);
-              }
-            }).addTo(map);
+            window.geojsonData = data;
+            renderPoints(data);
           })
           .catch(e => console.error(e));
       })
       .catch(error => console.error('Error cargando Cartagena.json:', error));
 
-    // Leyenda
     const legend = L.control({position: 'bottomright'});
 
     legend.onAdd = function(map) {
@@ -133,10 +138,15 @@
         { id: 8, name: "Centro comercial" }
       ];
 
-      div.innerHTML += '<h4>Categorías</h4>';
+      div.innerHTML += '<h4>Filtrar por categoría</h4>';
+      div.innerHTML += `<button onclick="renderPoints(window.geojsonData)" style="background:#999;color:#fff;">Mostrar todos</button>`;
 
       categories.forEach(cat => {
-        div.innerHTML += `<i style="background:${getColorByCategoria(cat.id)}"></i> ${cat.name}<br>`;
+        div.innerHTML += `
+          <button onclick="renderPoints(window.geojsonData, ${cat.id})"
+                  style="background:${getColorByCategoria(cat.id)}; color:#fff;">
+            ${cat.name}
+          </button>`;
       });
 
       return div;
@@ -146,6 +156,7 @@
   </script>
 </body>
 </html>
+
 
 
 
