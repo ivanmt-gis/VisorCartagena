@@ -21,25 +21,22 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     // Crear el mapa
-    const map = L.map('map').setView([0, 0], 2); // Puedes ajustar el centro y zoom
+    const map = L.map('map').setView([0, 0], 2);
 
-    // Cargar una capa base
+    // Capa base
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Cargar GeoJSON de puntos con popup
+    // Cargar GeoJSON de puntos con popup que muestra solo "Nombre"
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
       .then(response => response.json())
       .then(data => {
         const geojsonLayer = L.geoJSON(data, {
           onEachFeature: function (feature, layer) {
-            let popupContent = "";
-            for (const key in feature.properties) {
-              popupContent += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
-            }
-            layer.bindPopup(popupContent);
+            const nombre = feature.properties.Name || "Sin nombre";
+            layer.bindPopup(`<strong>Nombre:</strong> ${nombre}`);
           }
         }).addTo(map);
         //map.fitBounds(geojsonLayer.getBounds());
@@ -57,7 +54,6 @@
             fillOpacity: 0
           }
         }).addTo(map);
-        // Centrar el mapa en el municipio
         map.fitBounds(municipioLayer.getBounds());
       })
       .catch(error => console.error('Error cargando Cartagena.json:', error));
