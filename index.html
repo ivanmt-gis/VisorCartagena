@@ -56,33 +56,7 @@
       }
     }
 
-fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
-  .then(response => response.json())
-  .then(data => {
-    const geojsonLayer = L.geoJSON(data, {
-      pointToLayer: function(feature, latlng) {
-        const cat = Number(feature.properties.Categoria);
-        return L.circleMarker(latlng, {
-          radius: 6,
-          fillColor: getColorByCategoria(cat),
-          color: "#000",
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.8
-        });
-      },
-      onEachFeature: function(feature, layer) {
-        const nombre = feature.properties.Name || "Sin nombre";
-        const categoria = feature.properties.Categoria || "Sin categoría";
-        layer.bindPopup(`<strong>Nombre:</strong> ${nombre}<br><strong>Categoría:</strong> ${categoria}`);
-        layer.on('click', () => layer.openPopup());
-        console.log("Popup binded to feature:", nombre);
-      }
-    }).addTo(map);
-  })
-  .catch(e => console.error(e));
-
-
+    // Primero cargar el límite del municipio (sin interacción)
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
@@ -91,10 +65,40 @@ fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/P
             color: "red",
             weight: 4,
             fillOpacity: 0
-          }
+          },
+          interactive: false  // no responder a clics
         }).addTo(map);
+
+        // Centrar el mapa en el municipio
         map.fitBounds(municipioLayer.getBounds());
-      });
+
+        // Ahora cargar la capa de puntos (por encima)
+        fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
+          .then(response => response.json())
+          .then(data => {
+            const geojsonLayer = L.geoJSON(data, {
+              pointToLayer: function(feature, latlng) {
+                const cat = Number(feature.properties.Categoria);
+                return L.circleMarker(latlng, {
+                  radius: 6,
+                  fillColor: getColorByCategoria(cat),
+                  color: "#000",
+                  weight: 1,
+                  opacity: 1,
+                  fillOpacity: 0.8
+                });
+              },
+              onEachFeature: function(feature, layer) {
+                const nombre = feature.properties.Name || "Sin nombre";
+                const categoria = feature.properties.Categoria || "Sin categoría";
+                layer.bindPopup(`<strong>Nombre:</strong> ${nombre}<br><strong>Categoría:</strong> ${categoria}`);
+                // layer.on('click', () => layer.openPopup()); // No es necesario, bindPopup ya hace esto
+              }
+            }).addTo(map);
+          })
+          .catch(e => console.error(e));
+      })
+      .catch(error => console.error('Error cargando Cartagena.json:', error));
 
     const legend = L.control({position: 'bottomright'});
 
@@ -116,4 +120,5 @@ fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/P
   </script>
 </body>
 </html>
+
 
