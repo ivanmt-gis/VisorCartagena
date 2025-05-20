@@ -7,30 +7,15 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    #map { height: 100vh; width: 100%; }
-    .legend {
-      background: white;
-      padding: 6px 8px;
-      font: 14px Arial, Helvetica, sans-serif;
-      box-shadow: 0 0 15px rgba(0,0,0,0.2);
-      border-radius: 5px;
-      line-height: 24px;
-      color: #333;
-    }
-    .legend h4 {
-      margin: 0 0 5px 0;
-      color: #777;
-    }
-    .legend button {
-      display: block;
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
       width: 100%;
-      margin: 2px 0;
-      padding: 4px;
-      font-size: 13px;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      text-align: left;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
     }
   </style>
 </head>
@@ -39,6 +24,7 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
+    // Mapas base
     const baseLayers = {
       "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -76,29 +62,51 @@
       }
     }
 
-    let allMarkers = [];
+    let allLayersByCat = {}; // Agrupar marcadores por categoría
 
-    function renderPoints(data, categoriaFiltrada = null) {
-      allMarkers.forEach(m => map.removeLayer(m));
-      allMarkers = [];
-
+    function renderPoints(data) {
+      const layerGroup = {};
       data.features.forEach(feature => {
         const cat = Number(feature.properties.Categoria);
-        if (!categoriaFiltrada || cat === categoriaFiltrada) {
-          const marker = L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
-            radius: 6,
-            fillColor: getColorByCategoria(cat),
-            color: "#000",
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
-          }).bindPopup(`<strong>Nombre:</strong> ${feature.properties.Name || "Sin nombre"}`);
-          marker.addTo(map);
-          allMarkers.push(marker);
+        const marker = L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
+          radius: 6,
+          fillColor: getColorByCategoria(cat),
+          color: "#000",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).bindPopup(`<strong>Nombre:</strong> ${feature.properties.Name || "Sin nombre"}`);
+
+        if (!layerGroup[cat]) {
+          layerGroup[cat] = L.layerGroup();
         }
+        layerGroup[cat].addLayer(marker);
       });
+
+      allLayersByCat = layerGroup;
+
+      // Añadir control de capas por categoría
+      const categoryNames = {
+        1: "Mercado",
+        2: "Hostelería",
+        3: "Quesería",
+        4: "Alimentación/Panadería",
+        5: "Bodega",
+        6: "Otros servicios",
+        7: "Museo",
+        8: "Centro comercial"
+      };
+
+      const categoryLayers = {};
+      for (const cat in layerGroup) {
+        categoryLayers[categoryNames[cat]] = layerGroup[cat];
+      }
+
+      L.control.layers(null, categoryLayers, { collapsed: false }).addTo(map);
+      Object.values(layerGroup).forEach(group => group.addTo(map));
     }
 
+    // Cargar límites y puntos
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
@@ -115,44 +123,10 @@
 
         fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
           .then(response => response.json())
-          .then(data => {
-            window.geojsonData = data;
-            renderPoints(data);
-          })
+          .then(data => renderPoints(data))
           .catch(e => console.error(e));
       })
       .catch(error => console.error('Error cargando Cartagena.json:', error));
-
-    const legend = L.control({position: 'bottomright'});
-
-    legend.onAdd = function(map) {
-      const div = L.DomUtil.create('div', 'legend');
-      const categories = [
-        { id: 1, name: "Mercado" },
-        { id: 2, name: "Hostelería" },
-        { id: 3, name: "Quesería" },
-        { id: 4, name: "Alimentación/Panadería" },
-        { id: 5, name: "Bodega" },
-        { id: 6, name: "Otros servicios" },
-        { id: 7, name: "Museo" },
-        { id: 8, name: "Centro comercial" }
-      ];
-
-      div.innerHTML += '<h4>Filtrar por categoría</h4>';
-      div.innerHTML += `<button onclick="renderPoints(window.geojsonData)" style="background:#999;color:#fff;">Mostrar todos</button>`;
-
-      categories.forEach(cat => {
-        div.innerHTML += `
-          <button onclick="renderPoints(window.geojsonData, ${cat.id})"
-                  style="background:${getColorByCategoria(cat.id)}; color:#fff;">
-            ${cat.name}
-          </button>`;
-      });
-
-      return div;
-    };
-
-    legend.addTo(map);
   </script>
 </body>
 </html>
