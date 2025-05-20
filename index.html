@@ -7,26 +7,36 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body, html { margin: 0; padding: 0; }
-    #map { height: 100vh; width: 100%; }
-
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
     .legend {
+      position: absolute;
+      bottom: 30px;
+      right: 10px;
       background: white;
       padding: 6px 8px;
       font: 14px Arial, Helvetica, sans-serif;
       box-shadow: 0 0 15px rgba(0,0,0,0.2);
       border-radius: 5px;
-      line-height: 24px;
-      color: #333;
-      max-width: 200px;
-    }
-    .legend.dark {
-      background: #333;
-      color: #fff;
+      z-index: 1000;
+      width: 220px;
     }
     .legend h4 {
       margin: 0 0 5px 0;
-      color: inherit;
+      color: #777;
+      cursor: pointer;
+    }
+    .legend-content {
+      display: none;
+      margin-top: 5px;
     }
     .legend i {
       width: 18px;
@@ -35,21 +45,10 @@
       margin-right: 8px;
       opacity: 0.8;
     }
-
-    .leaflet-top.leaflet-left {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .custom-button {
-      background-color: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 6px 8px;
+    .legend label {
+      display: block;
+      margin: 2px 0;
       cursor: pointer;
-      font-size: 14px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
   </style>
 </head>
@@ -58,68 +57,28 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Mapa base claro y oscuro
-    const lightMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    });
+    const baseLayers = {
+      "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }),
+      "Mapa gris claro": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://carto.com/">CartoDB</a>'
+      }),
+      "Imagen satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      })
+    };
 
-    const darkMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      attribution: '© CartoDB'
-    });
-
-    // Inicializar mapa
     const map = L.map('map', {
-      layers: [lightMap],
+      layers: [baseLayers["OpenStreetMap"]],
       center: [0, 0],
       zoom: 2
     });
 
-    let currentBase = 'light';
-
-    // Función para alternar modo claro/oscuro
-    function toggleDarkMode() {
-      if (currentBase === 'light') {
-        map.removeLayer(lightMap);
-        map.addLayer(darkMap);
-        document.querySelector('.legend').classList.add('dark');
-        currentBase = 'dark';
-      } else {
-        map.removeLayer(darkMap);
-        map.addLayer(lightMap);
-        document.querySelector('.legend').classList.remove('dark');
-        currentBase = 'light';
-      }
-    }
-
-    // Botón modo oscuro/claro
-    const toggleBtn = L.control({position: 'topleft'});
-    toggleBtn.onAdd = function(map) {
-      const btn = L.DomUtil.create('button', 'custom-button');
-      btn.innerHTML = "🌗 Modo Oscuro/Claro";
-      btn.onclick = toggleDarkMode;
-      return btn;
-    };
-    toggleBtn.addTo(map);
-
-    // Botón geolocalización
-    const geoBtn = L.control({position: 'topleft'});
-    geoBtn.onAdd = function(map) {
-      const btn = L.DomUtil.create('button', 'custom-button');
-      btn.innerHTML = "📍 Mi ubicación";
-      btn.onclick = () => {
-        map.locate({setView: true, maxZoom: 16});
-      };
-      return btn;
-    };
-    geoBtn.addTo(map);
-
-    // Añadir marcador al encontrar ubicación
-    map.on('locationfound', function(e) {
-      L.marker(e.latlng).addTo(map)
-        .bindPopup("Estás aquí").openPopup();
-    });
+    L.control.layers(baseLayers).addTo(map);
 
     function getColorByCategoria(categoria) {
       switch (categoria) {
@@ -135,35 +94,45 @@
       }
     }
 
-    // Leyenda
-    const legend = L.control({position: 'bottomright'});
+    const categoryNames = {
+      1: "Mercado",
+      2: "Hostelería",
+      3: "Quesería",
+      4: "Alimentación/Panadería",
+      5: "Bodega",
+      6: "Otros servicios",
+      7: "Museo",
+      8: "Centro comercial"
+    };
 
-    legend.onAdd = function(map) {
-      const div = L.DomUtil.create('div', 'legend');
-      const categories = [
-        { id: 1, name: "Mercado" },
-        { id: 2, name: "Hostelería" },
-        { id: 3, name: "Quesería" },
-        { id: 4, name: "Alimentación/Panadería" },
-        { id: 5, name: "Bodega" },
-        { id: 6, name: "Otros servicios" },
-        { id: 7, name: "Museo" },
-        { id: 8, name: "Centro comercial" }
-      ];
+    const markersByCategory = {};
 
-      div.innerHTML += '<h4>Categorías</h4>';
+    function renderPoints(data) {
+      data.features.forEach(feature => {
+        const cat = Number(feature.properties.Categoria);
+        const marker = L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
+          radius: 6,
+          fillColor: getColorByCategoria(cat),
+          color: "#000",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).bindPopup(`<strong>Nombre:</strong> ${feature.properties.Name || "Sin nombre"}`);
 
-      categories.forEach(cat => {
-        div.innerHTML += `<i style="background:${getColorByCategoria(cat.id)}"></i> ${cat.name}<br>`;
+        if (!markersByCategory[cat]) {
+          markersByCategory[cat] = L.layerGroup();
+        }
+        markersByCategory[cat].addLayer(marker);
       });
 
-      return div;
-    };
-    legend.addTo(map);
+      // Mostrar todos inicialmente
+      for (const cat in markersByCategory) {
+        markersByCategory[cat].addTo(map);
+      }
+    }
 
-    // Cargar municipio
     fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
-      .then(r => r.json())
+      .then(response => response.json())
       .then(data => {
         const municipioLayer = L.geoJSON(data, {
           style: {
@@ -176,32 +145,50 @@
 
         map.fitBounds(municipioLayer.getBounds());
 
-        // Cargar puntos
         fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
-          .then(r => r.json())
-          .then(data => {
-            L.geoJSON(data, {
-              pointToLayer: function(feature, latlng) {
-                const cat = Number(feature.properties.Categoria);
-                return L.circleMarker(latlng, {
-                  radius: 6,
-                  fillColor: getColorByCategoria(cat),
-                  color: "#000",
-                  weight: 1,
-                  opacity: 1,
-                  fillOpacity: 0.8
-                });
-              },
-              onEachFeature: function(feature, layer) {
-                const nombre = feature.properties.Name || "Sin nombre";
-                layer.bindPopup(`<strong>Nombre:</strong> ${nombre}`);
-              }
-            }).addTo(map);
-          });
+          .then(response => response.json())
+          .then(data => renderPoints(data));
       });
+
+    // Crear la leyenda personalizada desplegable
+    const legendDiv = L.DomUtil.create('div', 'legend');
+    legendDiv.innerHTML = `<h4 id="legendToggle">Filtrar por categoría ▾</h4><div class="legend-content" id="legendContent"></div>`;
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = () => legendDiv;
+    legend.addTo(map);
+
+    const content = legendDiv.querySelector('#legendContent');
+    for (const cat in categoryNames) {
+      const color = getColorByCategoria(Number(cat));
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" data-cat="${cat}" checked> 
+        <i style="background:${color}"></i> ${categoryNames[cat]}`;
+      content.appendChild(label);
+    }
+
+    // Mostrar/ocultar contenido
+    const toggle = document.getElementById("legendToggle");
+    toggle.addEventListener("click", () => {
+      content.style.display = content.style.display === "none" ? "block" : "none";
+      toggle.innerHTML = `Filtrar por categoría ${content.style.display === "none" ? '▸' : '▾'}`;
+    });
+    content.style.display = "none"; // Inicia cerrado
+
+    // Manejar filtrado
+    content.addEventListener('change', (e) => {
+      if (e.target.tagName === "INPUT") {
+        const cat = e.target.getAttribute('data-cat');
+        if (e.target.checked) {
+          markersByCategory[cat]?.addTo(map);
+        } else {
+          markersByCategory[cat]?.removeFrom(map);
+        }
+      }
+    });
   </script>
 </body>
 </html>
+
 
 
 
