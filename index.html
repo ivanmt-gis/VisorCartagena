@@ -50,26 +50,67 @@
       margin: 2px 0;
       cursor: pointer;
     }
-    /* Botón ubicación */
+    /* Botones personalizados */
     .custom-button {
       background: white;
       border: none;
-      padding: 6px 10px;
+      padding: 4px 8px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
       border-radius: 4px;
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      margin-bottom: 5px;
+      width: 36px;
+      height: 36px;
+      text-align: center;
+      line-height: 28px;
+      user-select: none;
     }
     .custom-button:hover {
       background: #f0f0f0;
+    }
+    /* Contenedor para botones arriba a la izquierda */
+    .custom-controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    /* Modos oscuro y claro */
+    body.dark-mode {
+      background: #121212;
+      color: #eee;
+    }
+    body.dark-mode .legend {
+      background: #222;
+      color: #eee;
+      box-shadow: 0 0 15px rgba(255,255,255,0.2);
+    }
+    body.dark-mode .legend h4 {
+      color: #ccc;
+    }
+    body.dark-mode .legend label {
+      color: #ddd;
+    }
+    body.dark-mode .legend i {
+      opacity: 1;
+      border: 1px solid #555;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
+  <div class="custom-controls" id="customControls">
+    <!-- Botones se añadirán por JS -->
+  </div>
+
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
+    // Capas base
     const baseLayers = {
       "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -85,6 +126,7 @@
       })
     };
 
+    // Crear mapa
     const map = L.map('map', {
       layers: [baseLayers["OpenStreetMap"]],
       center: [0, 0],
@@ -93,6 +135,7 @@
 
     L.control.layers(baseLayers).addTo(map);
 
+    // Función color categorías
     function getColorByCategoria(categoria) {
       switch (categoria) {
         case 1: return "#1f77b4";
@@ -120,6 +163,7 @@
 
     const markersByCategory = {};
 
+    // Renderizar puntos
     function renderPoints(data) {
       data.features.forEach(feature => {
         const cat = Number(feature.properties.Categoria);
@@ -163,7 +207,7 @@
           .then(data => renderPoints(data));
       });
 
-    // Crear la leyenda personalizada desplegable
+    // Leyenda desplegable
     const legendDiv = L.DomUtil.create('div', 'legend');
     legendDiv.innerHTML = `<h4 id="legendToggle">Filtrar por categoría ▾</h4><div class="legend-content" id="legendContent"></div>`;
     const legend = L.control({ position: 'bottomright' });
@@ -179,15 +223,15 @@
       content.appendChild(label);
     }
 
-    // Mostrar/ocultar contenido
+    // Toggle leyenda
     const toggle = document.getElementById("legendToggle");
     toggle.addEventListener("click", () => {
       content.style.display = content.style.display === "none" ? "block" : "none";
       toggle.innerHTML = `Filtrar por categoría ${content.style.display === "none" ? '▸' : '▾'}`;
     });
-    content.style.display = "none"; // Inicia cerrado
+    content.style.display = "none"; // inicio cerrado
 
-    // Manejar filtrado
+    // Filtrar categorias
     content.addEventListener('change', (e) => {
       if (e.target.tagName === "INPUT") {
         const cat = e.target.getAttribute('data-cat');
@@ -199,35 +243,49 @@
       }
     });
 
-    // --- BOTÓN DE UBICACIÓN CON SEGUIMIENTO EN VIVO ---
+    // --- BOTONES MODO OSCURO Y UBICACIÓN ---
+
+    const controlsDiv = document.getElementById('customControls');
+
+    // Botón modo oscuro
+    const darkModeBtn = document.createElement('button');
+    darkModeBtn.className = 'custom-button';
+    darkModeBtn.title = 'Modo oscuro/claro';
+    darkModeBtn.innerHTML = '🌓';
+
+    darkModeBtn.onclick = () => {
+      document.body.classList.toggle('dark-mode');
+    };
+    controlsDiv.appendChild(darkModeBtn);
+
+    // Botón ubicación con seguimiento en vivo
     let locationMarker = null;
     let locating = false;
 
-    const geoBtn = L.control({ position: 'topleft' });
-    geoBtn.onAdd = function(map) {
-      const btn = L.DomUtil.create('button', 'custom-button');
-      btn.innerHTML = "📍 Mi ubicación";
+    const geoBtn = document.createElement('button');
+    geoBtn.className = 'custom-button';
+    geoBtn.title = 'Mostrar/Ocultar mi ubicación';
+    geoBtn.innerHTML = '📍';
 
-      btn.onclick = () => {
-        if (!locating) {
-          locating = true;
-          btn.innerHTML = "📍 Desactivar ubicación";
-          map.locate({ setView: true, maxZoom: 16, watch: true, enableHighAccuracy: true });
-        } else {
-          locating = false;
-          btn.innerHTML = "📍 Mi ubicación";
-          if (locationMarker) {
-            map.removeLayer(locationMarker);
-            locationMarker = null;
-          }
-          map.stopLocate();
+    geoBtn.onclick = () => {
+      if (!locating) {
+        locating = true;
+        geoBtn.style.background = '#cce5ff'; // ligero cambio para indicar activo
+        map.locate({ setView: true, maxZoom: 16, watch: true, enableHighAccuracy: true });
+      } else {
+        locating = false;
+        geoBtn.style.background = 'white';
+        if (locationMarker) {
+          map.removeLayer(locationMarker);
+          locationMarker = null;
         }
-      };
-
-      return btn;
+        map.stopLocate();
+      }
     };
-    geoBtn.addTo(map);
 
+    controlsDiv.appendChild(geoBtn);
+
+    // Actualizar posición en vivo
     map.on('locationfound', function(e) {
       if (locationMarker) map.removeLayer(locationMarker);
 
@@ -237,10 +295,13 @@
 
     map.on('locationerror', function(e) {
       alert("Error al obtener la ubicación: " + e.message);
+      locating = false;
+      geoBtn.style.background = 'white';
     });
   </script>
 </body>
 </html>
+
 
 
 
