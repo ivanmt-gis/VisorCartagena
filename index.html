@@ -34,7 +34,7 @@
       .then(response => response.json())
       .then(data => {
         const geojsonLayer = L.geoJSON(data).addTo(map);
-        map.fitBounds(geojsonLayer.getBounds());
+        //map.fitBounds(geojsonLayer.getBounds());
       })
       .catch(error => console.error('Error cargando Puntos.json:', error));
 
@@ -49,6 +49,8 @@
             fillOpacity: 0
           }
         }).addTo(map);
+            // Centrar el mapa en el municipio
+    map.fitBounds(municipioLayer.getBounds());
       })
       .catch(error => console.error('Error cargando Cartagena.json:', error));
   </script>
