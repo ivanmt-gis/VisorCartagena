@@ -92,7 +92,6 @@
                 const nombre = feature.properties.Name || "Sin nombre";
                 const categoria = feature.properties.Categoria || "Sin categoría";
                 layer.bindPopup(`<strong>Nombre:</strong> ${nombre}<br><strong>Categoría:</strong> ${categoria}`);
-                // layer.on('click', () => layer.openPopup()); // No es necesario, bindPopup ya hace esto
               }
             }).addTo(map);
           })
@@ -104,13 +103,22 @@
 
     legend.onAdd = function(map) {
       const div = L.DomUtil.create('div', 'legend');
-      const categories = [1,2,3,4,5,6,7,8];
+      const categories = [
+        { id: 1, name: "Mercado" },
+        { id: 2, name: "Hostelería" },
+        { id: 3, name: "Quesería" },
+        { id: 4, name: "Alimentación/Panadería" },
+        { id: 5, name: "Bodega" },
+        { id: 6, name: "Otros servicios" },
+        { id: 7, name: "Museo" },
+        { id: 8, name: "Centro comercial" }
+      ];
       
       div.innerHTML += '<h4>Categorías</h4>';
       
       categories.forEach(cat => {
         div.innerHTML += 
-          `<i style="background:${getColorByCategoria(cat)}"></i> ${cat}<br>`;
+          `<i style="background:${getColorByCategoria(cat.id)}"></i> ${cat.name}<br>`;
       });
 
       return div;
@@ -120,6 +128,7 @@
   </script>
 </body>
 </html>
+
 
 
 
