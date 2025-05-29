@@ -2,110 +2,16 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Visor de Puntos</title>
+  <title>Destino Gastronómico Cartagena</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-    }
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-    .legend {
-      position: absolute;
-      bottom: 30px;
-      right: 10px;
-      background: white;
-      padding: 6px 8px;
-      font: 14px Arial, Helvetica, sans-serif;
-      box-shadow: 0 0 15px rgba(0,0,0,0.2);
-      border-radius: 5px;
-      z-index: 1000;
-      width: 220px;
-    }
-    .legend h4 {
-      margin: 0 0 5px 0;
-      color: #777;
-      cursor: pointer;
-    }
-    .legend-content {
-      display: none;
-      margin-top: 5px;
-    }
-    .legend i {
-      width: 18px;
-      height: 18px;
-      float: left;
-      margin-right: 8px;
-      opacity: 0.8;
-    }
-    .legend label {
-      display: block;
-      margin: 2px 0;
-      cursor: pointer;
-    }
-    /* Botones personalizados */
-    .custom-button {
-      background: white;
-      border: none;
-      padding: 4px 8px;
-      cursor: pointer;
-      font-size: 14px;
-      border-radius: 4px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
-      margin-bottom: 5px;
-      width: 36px;
-      height: 36px;
-      text-align: center;
-      line-height: 28px;
-      user-select: none;
-    }
-    .custom-button:hover {
-      background: #f0f0f0;
-    }
-    /* Contenedor para botones personalizados debajo capas base */
-    .custom-controls {
-      position: absolute;
-      top: 80px;  /* debajo del control capas base que está ~10px top + ~70px altura capas */
-      right: 10px;
-      z-index: 1100;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    /* Modos oscuro y claro */
-    body.dark-mode {
-      background: #121212;
-      color: #eee;
-    }
-    body.dark-mode .legend {
-      background: #222;
-      color: #eee;
-      box-shadow: 0 0 15px rgba(255,255,255,0.2);
-    }
-    body.dark-mode .legend h4 {
-      color: #ccc;
-    }
-    body.dark-mode .legend label {
-      color: #ddd;
-    }
-    body.dark-mode .legend i {
-      opacity: 1;
-      border: 1px solid #555;
-    }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+    #map { height: 100%; width: 100%; }
   </style>
 </head>
 <body>
   <div id="map"></div>
-
-  <!-- Aquí ponemos los botones personalizados -->
-  <div class="custom-controls" id="customControls"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
@@ -129,189 +35,32 @@
       })
     };
 
-    // Crear mapa con capa clara inicial
-    let currentBaseLayer = baseLayers["OpenStreetMap"];
+    // Crear el mapa
     const map = L.map('map', {
-      layers: [currentBaseLayer],
+      layers: [baseLayers["OpenStreetMap"]],
       center: [0, 0],
       zoom: 2
     });
 
+    // Control de capas base
     L.control.layers(baseLayers).addTo(map);
 
-    // Función color categorías
-    function getColorByCategoria(categoria) {
-      switch (categoria) {
-        case 1: return "#1f77b4";
-        case 2: return "#ff7f0e";
-        case 3: return "#2ca02c";
-        case 4: return "#d62728";
-        case 5: return "#9467bd";
-        case 6: return "#8c564b";
-        case 7: return "#e377c2";
-        case 8: return "#7f7f7f";
-        default: return "#000000";
-      }
-    }
-
-    const categoryNames = {
-      1: "Mercado",
-      2: "Hostelería",
-      3: "Quesería",
-      4: "Alimentación/Panadería",
-      5: "Bodega",
-      6: "Otros servicios",
-      7: "Museo",
-      8: "Centro comercial"
-    };
-
-    const markersByCategory = {};
-
-    // Renderizar puntos
-    function renderPoints(data) {
-      data.features.forEach(feature => {
-        const cat = Number(feature.properties.Categoria);
-        const marker = L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
-          radius: 6,
-          fillColor: getColorByCategoria(cat),
-          color: "#000",
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.8
-        }).bindPopup(`<strong>Nombre:</strong> ${feature.properties.Name || "Sin nombre"}`);
-
-        if (!markersByCategory[cat]) {
-          markersByCategory[cat] = L.layerGroup();
-        }
-        markersByCategory[cat].addLayer(marker);
-      });
-
-      // Mostrar todos inicialmente
-      for (const cat in markersByCategory) {
-        markersByCategory[cat].addTo(map);
-      }
-    }
-
-    fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Cartagena.json')
+    // Cargar límite del municipio
+    fetch('https://raw.githubusercontent.com/geocyl/VisorCartagena/refs/heads/main/Cartagena.json')
       .then(response => response.json())
       .then(data => {
         const municipioLayer = L.geoJSON(data, {
           style: {
-            color: "red",
-            weight: 4,
+            color: "blue",
+            weight: 8,
             fillOpacity: 0
           },
           interactive: false
         }).addTo(map);
 
         map.fitBounds(municipioLayer.getBounds());
-
-        fetch('https://raw.githubusercontent.com/ivanmt-gis/CotoGEOCyL/refs/heads/main/Puntos.json')
-          .then(response => response.json())
-          .then(data => renderPoints(data));
-      });
-
-    // Leyenda desplegable
-    const legendDiv = L.DomUtil.create('div', 'legend');
-    legendDiv.innerHTML = `<h4 id="legendToggle">Filtrar por categoría ▾</h4><div class="legend-content" id="legendContent"></div>`;
-    const legend = L.control({ position: 'bottomright' });
-    legend.onAdd = () => legendDiv;
-    legend.addTo(map);
-
-    const content = legendDiv.querySelector('#legendContent');
-    for (const cat in categoryNames) {
-      const color = getColorByCategoria(Number(cat));
-      const label = document.createElement('label');
-      label.innerHTML = `<input type="checkbox" data-cat="${cat}" checked> 
-        <i style="background:${color}"></i> ${categoryNames[cat]}`;
-      content.appendChild(label);
-    }
-
-    // Toggle leyenda
-    const toggle = document.getElementById("legendToggle");
-    toggle.addEventListener("click", () => {
-      content.style.display = content.style.display === "none" ? "block" : "none";
-      toggle.innerHTML = `Filtrar por categoría ${content.style.display === "none" ? '▸' : '▾'}`;
-    });
-    content.style.display = "none"; // inicio cerrado
-
-    // Filtrar categorias
-    content.addEventListener('change', (e) => {
-      if (e.target.tagName === "INPUT") {
-        const cat = e.target.getAttribute('data-cat');
-        if (e.target.checked) {
-          markersByCategory[cat]?.addTo(map);
-        } else {
-          markersByCategory[cat]?.removeFrom(map);
-        }
-      }
-    });
-
-    // --- BOTONES MODO OSCURO Y UBICACIÓN ---
-
-    const controlsDiv = document.getElementById('customControls');
-
-    // Botón modo oscuro
-    const darkModeBtn = document.createElement('button');
-    darkModeBtn.className = 'custom-button';
-    darkModeBtn.title = 'Modo oscuro/claro';
-    darkModeBtn.innerHTML = '🌓';
-
-    // Botón ubicación con seguimiento en vivo
-    let locationMarker = null;
-    let locating = false;
-
-    const geoBtn = document.createElement('button');
-    geoBtn.className = 'custom-button';
-    geoBtn.title = 'Mostrar/Ocultar mi ubicación';
-    geoBtn.innerHTML = '📍';
-
-    darkModeBtn.onclick = () => {
-      document.body.classList.toggle('dark-mode');
-
-      if (map.hasLayer(currentBaseLayer)) {
-        map.removeLayer(currentBaseLayer);
-      }
-      if (document.body.classList.contains('dark-mode')) {
-        currentBaseLayer = baseLayers["Mapa oscuro"];
-      } else {
-        currentBaseLayer = baseLayers["OpenStreetMap"];
-      }
-      currentBaseLayer.addTo(map);
-    };
-
-    geoBtn.onclick = () => {
-      if (!locating) {
-        locating = true;
-        geoBtn.style.background = '#cce5ff'; // indicar activo
-        map.locate({ setView: true, maxZoom: 16, watch: true, enableHighAccuracy: true });
-      } else {
-        locating = false;
-        geoBtn.style.background = 'white';
-        if (locationMarker) {
-          map.removeLayer(locationMarker);
-          locationMarker = null;
-        }
-        map.stopLocate();
-      }
-    };
-
-    controlsDiv.appendChild(darkModeBtn);
-    controlsDiv.appendChild(geoBtn);
-
-    // Actualizar posición en vivo
-    map.on('locationfound', function(e) {
-      if (locationMarker) map.removeLayer(locationMarker);
-
-      locationMarker = L.marker(e.latlng).addTo(map)
-        .bindPopup("Estás aquí").openPopup();
-    });
-
-    map.on('locationerror', function(e) {
-      alert("Error al obtener la ubicación: " + e.message);
-      locating = false;
-      geoBtn.style.background = 'white';
-    });
+      })
+      .catch(error => console.error('Error cargando Cartagena.json:', error));
   </script>
 </body>
 </html>
